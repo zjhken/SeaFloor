@@ -1,51 +1,96 @@
 #![allow(non_snake_case)]
 
-use anyhow::Result;
+use std::net::{SocketAddr, TcpListener};
+
 use anyhow::Error;
-use smol::future::Future;
-use std::pin::Pin;
-use futures::future::BoxFuture;
+use anyhow::Result;
+use smol::{Async, future::Future};
 
-pub struct AsyncFnPtr<R> {
-	func: Box<dyn Fn(i32, i32) -> BoxFuture<'static, R> + Send + 'static>
-}
+use crate::{context::Context, utils::AsyncFnPtr};
+use futures::AsyncReadExt;
+use http_types::{Response, Request, StatusCode};
+use smol::lock::{RwLock};
+use std::lazy::SyncLazy;
 
-impl<R> AsyncFnPtr<R> {
-	pub fn new<F>(f: fn(i32, i32) -> F) -> AsyncFnPtr<F::Output>
-		where F: Future<Output=R> + Send + 'static {
-		AsyncFnPtr {
-			func: Box::new(move |a, b| Box::pin(f(a, b))),
-		}
-	}
-	// async fn run(&self) -> R { (self.func)().await }
-}
 
+pub static HANDLERS: SyncLazy<RwLock<Vec<AsyncFnPtr<Context>>>> = SyncLazy::new(||RwLock::new(vec![]));
 
 pub struct App {
-	handlers: Vec<Box<dyn Future<Output=bool>>>,
+	addr: ([u8; 4], u16),
 }
 
 impl App {
-	pub async fn setHandler<Fut>(mut handlers: Vec<AsyncFnPtr<bool>>, f: fn(i32, i32) -> Fut) -> Result<bool, Error>
+	pub fn setHandler<Fut>(&mut self, f: fn(Context) -> Fut) -> &mut App
 		where
-				Fut: Future<Output=bool> + Send + 'static,
+				Fut: Future<Output=Context> + Send + 'static,
 	{
-		handlers.push(AsyncFnPtr::new(f));
-		handlers
-				.iter()
-				.enumerate()
-				.map(|(index, asyncFnPtr)| {
-					smol::block_on(async {
-						(asyncFnPtr.func)(index as i32, 1i32).await
-						// asyncFnPtr(index as i32, 1i32).await
-					})
-				})
-				.collect::<Vec<bool>>();
-		// Ok(f(1, 2).await)
-		Ok(true)
+		smol::block_on(async {
+			let mut handlers = HANDLERS.write().await;
+			(*handlers).push(AsyncFnPtr::new(f));
+		});
+		return self;
+	}
+
+	pub fn new() -> Self {
+		return App {
+			addr: ([0, 0, 0, 0], 8800),
+		};
+	}
+
+	pub fn listenAddress<A: Into<SocketAddr>>(&mut self, addr: ([u8;4], u16)) -> &mut App {
+		self.addr = addr;
+		return self;
+	}
+
+	pub fn start(&mut self) -> Result<()> {
+		let result: Result<(), std::io::Error> = smol::block_on(async {
+			let listener = Async::<TcpListener>::bind(self.addr).unwrap();
+			println!("Listening on {}", listener.get_ref().local_addr()?);
+			println!("Now start a TCP client.");
+			loop {
+				let (mut stream, peer_addr) = listener.accept().await?;
+				println!("Accepted client: {}", peer_addr);
+
+				let stream = async_dup::Arc::new(stream);
+
+				// Spawn a task that echoes messages from the client back to it.
+				smol::spawn(async move {
+
+					if let Err(err) = async_h1::accept(stream, async move |req|{
+						println!("Serving {}", req.url());
+
+						let mut ctx = Context{
+							handlerIndex: 0,
+							request: req,
+							response: Response::new(StatusCode::Ok),
+						};
+
+						let handlers = HANDLERS.read().await;
+						if handlers.len() != 0 {
+							let handler = handlers.get(0).unwrap();
+							let ctx = handler.run(ctx).await;
+							return Ok(ctx.response);
+						}
+						else {
+							return Err(http_types::Error::new(StatusCode::ServiceUnavailable, Error::msg("not work")));
+						}
+					}).await {
+						println!("Connection error: {:#?}", err);
+					}
+				}).detach();
+			}
+			Ok(())
+		});
+		return Ok(());
 	}
 }
 
-pub fn next(){
 
+async fn serve(req: Request) -> http_types::Result<Response> {
+	println!("Serving {}", req.url());
+
+	let mut res = Response::new(StatusCode::Ok);
+	res.insert_header("Content-Type", "text/plain");
+	res.set_body("Hello from async-h1!");
+	Ok(res)
 }
