@@ -2,9 +2,9 @@
 #![feature(async_closure)]
 #![feature(once_cell)]
 
-mod application;
-mod context;
-mod utils;
+pub mod application;
+pub mod context;
+pub mod utils;
 
 #[cfg(test)]
 mod tests {
@@ -13,13 +13,14 @@ mod tests {
 	#[test]
 	fn it_works() {
 		let mut app = App::new();
-		let _ = app.setHandler(hehe);
-		let _ = app.setHandler(doIt);
+		let _ = app.setHandlerWithPath("/test", hehe);
+		let _ = app.setHandlerWithPath("/test.*", doIt);
 		let _ = app.start();
 	}
 
 	async fn hehe(mut ctx: Context) -> Context {
 		println!("Before handle. {:?}", ctx.request.body_string().await);
+		ctx.response.set_body("This is hehe function");
 		let ctx = ctx.next().await;
 		println!("After handler");
 		return ctx;
@@ -27,9 +28,17 @@ mod tests {
 
 	async fn doIt(mut ctx: Context) -> Context {
 		ctx.response.insert_header("Content-Type", "text/plain");
-		ctx.response.set_body("Hello from async-h1!");
+		let mut s = ctx.response.body_string().await.unwrap();
+		s.push_str("This is doIt function");
+		ctx.response.set_body(s);
 		let ctx = ctx.next().await;
 		println!("DoIt done.");
 		return ctx;
+	}
+
+	#[test]
+	fn split() {
+		let x: Vec<&str> = "/haha/hehe/heihei".split('/').collect();
+		println!("{:?}", x);
 	}
 }

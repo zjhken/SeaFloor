@@ -19,6 +19,6 @@ impl<R> AsyncFnPtr<R> {
 		}
 	}
 	pub async fn run(&self, context: Context) -> R {
-		return (self.func)(context).await
+		return (self.func)(context).await;
 	}
 }

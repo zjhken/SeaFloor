@@ -4,12 +4,12 @@ use std::borrow::Borrow;
 
 use futures::Future;
 
-use crate::{application::App};
+use crate::application::{App, PATH_REG};
+use crate::application::{HANDLERS, PATHS};
 use http_types::{Request, Response};
-use crate::application::HANDLERS;
 
 pub struct Context {
-	pub handlerIndex: usize,
+	pub pathIndex: usize,
 
 	pub request: Request,
 	pub response: Response,
@@ -18,16 +18,23 @@ pub struct Context {
 impl Context {
 	pub async fn next(mut self) -> Self {
 		let handlers = HANDLERS.read().await;
-		println!("len={}, index={}", handlers.len(), self.handlerIndex);
-		if self.handlerIndex + 1 < handlers.len() {
+		let pathRegex = PATH_REG.read().await;
+		println!("len={}, index={}", handlers.len(), self.pathIndex);
+
+		for i in self.pathIndex..handlers.len() {
 			println!("Found there is next function");
-			self.handlerIndex += 1;
-			let handler = handlers.get(self.handlerIndex).unwrap();
-			return handler.run(self).await;
+
+			println!("Checking regex");
+			let regex = pathRegex.get(i).unwrap();
+			let url = self.request.url().as_str();
+			if regex.is_match(url) {
+				println!("Found matches path: {}", url);
+				self.pathIndex += 1;
+				let handler = handlers.get(i).unwrap();
+				return handler.run(self).await;
+			}
 		}
-		else {
-			println!("no next function");
-			return self;
-		}
+		println!("no next function");
+		return self;
 	}
 }
