@@ -15,7 +15,7 @@ use smol::lock::RwLock;
 
 use crate::{context::Context, utils::AsyncFnPtr};
 
-pub static HANDLERS: SyncLazy<RwLock<Vec<AsyncFnPtr<Result<Context>>>>> =
+pub static HANDLERS: SyncLazy<RwLock<Vec<AsyncFnPtr<HttpResult>>>> =
 	SyncLazy::new(|| RwLock::new(vec![]));
 pub static PATHS: SyncLazy<RwLock<Vec<&str>>> = SyncLazy::new(|| RwLock::new(vec![]));
 pub static PATH_TREE: SyncLazy<RwLock<HashMap<&'static str, PathNode>>> =
@@ -33,10 +33,12 @@ pub enum PathNode {
 	Vec(Vec<PathNode>),
 }
 
+pub type HttpResult = Result<Context, http_types::Error>;
+
 impl App {
 	pub fn setFunc<Fut>(&mut self, path: &'static str, f: fn(Context) -> Fut) -> &mut App
 		where
-				Fut: Future<Output=Result<Context>> + Send + 'static,
+				Fut: Future<Output=HttpResult> + Send + 'static,
 	{
 		smol::block_on(async {
 			let mut handlers = HANDLERS.write().await;
@@ -90,7 +92,7 @@ impl App {
 							return match ctx.next().await {
 								Ok(ctx) => Ok(ctx.response),
 								Err(e) => {
-									let mut resp = Response::new(StatusCode::InternalServerError);
+									let mut resp = Response::new(e.status());
 									resp.set_body(format!("{}", e));
 									Ok(resp)
 								}

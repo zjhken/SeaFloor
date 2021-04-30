@@ -4,6 +4,7 @@
 
 pub use anyhow;
 pub use smol;
+pub use http_types;
 
 pub mod application;
 pub mod context;
@@ -25,20 +26,17 @@ mod tests {
 		let _ = app.start();
 	}
 
-	async fn hehe(mut ctx: Context) -> Result<Context> {
-		println!("Before handle. {:?}", ctx.request.body_string().await);
+	async fn hehe(mut ctx: Context) -> Result<Context, http_types::Error> {
+		let s = ctx.request.body_string().await?;
 		ctx.response.set_body("This is hehe function");
 		let ctx = ctx.next().await;
 		println!("After handler");
 		return ctx;
 	}
 
-	async fn doIt(mut ctx: Context) -> Result<Context> {
+	async fn doIt(mut ctx: Context) -> Result<Context, http_types::Error> {
 		ctx.response.insert_header("Content-Type", "text/plain");
-		let mut s = match ctx.response.body_string().await {
-			Ok(str) => str,
-			Err(e) => bail!(e)
-		};
+		let mut s = ctx.response.body_string().await?;
 		s.push_str("This is doIt function");
 		ctx.response.set_body(s);
 		let ctx = ctx.next().await;

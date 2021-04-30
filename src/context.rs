@@ -17,7 +17,7 @@ pub struct Context {
 }
 
 impl Context {
-	pub async fn next(mut self) -> Result<Self> {
+	pub async fn next(mut self) -> Result<Self, http_types::Error> {
 		let handlers = HANDLERS.read().await;
 		let pathRegex = PATH_REG.read().await;
 		println!("len={}, index={}", handlers.len(), self.pathIndex);
