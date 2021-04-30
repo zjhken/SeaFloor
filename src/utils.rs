@@ -1,7 +1,9 @@
 #![allow(non_snake_case)]
 
-use futures::{future::BoxFuture, Future};
 use std::pin::Pin;
+
+use anyhow::Result;
+use futures::{Future, future::BoxFuture};
 
 use crate::context::Context;
 

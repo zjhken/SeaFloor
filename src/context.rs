@@ -2,11 +2,12 @@
 
 use std::borrow::Borrow;
 
+use anyhow::Result;
 use futures::Future;
+use http_types::{Request, Response};
 
 use crate::application::{App, PATH_REG};
 use crate::application::{HANDLERS, PATHS};
-use http_types::{Request, Response};
 
 pub struct Context {
 	pub pathIndex: usize,
@@ -16,7 +17,7 @@ pub struct Context {
 }
 
 impl Context {
-	pub async fn next(mut self) -> Self {
+	pub async fn next(mut self) -> Result<Self> {
 		let handlers = HANDLERS.read().await;
 		let pathRegex = PATH_REG.read().await;
 		println!("len={}, index={}", handlers.len(), self.pathIndex);
@@ -35,6 +36,6 @@ impl Context {
 			}
 		}
 		println!("no next function");
-		return self;
+		return Ok(self);
 	}
 }
