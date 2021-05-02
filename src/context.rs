@@ -1,13 +1,10 @@
 #![allow(non_snake_case)]
 
-use std::borrow::Borrow;
-
 use anyhow::Result;
-use futures::Future;
 use http_types::{Request, Response};
 
-use crate::application::{App, PATH_REG};
-use crate::application::{HANDLERS, PATHS};
+use crate::application::{PATH_REG};
+use crate::application::{HANDLERS};
 
 pub struct Context {
 	pub pathIndex: usize,

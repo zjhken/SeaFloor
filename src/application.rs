@@ -4,11 +4,8 @@ use std::collections::HashMap;
 use std::lazy::SyncLazy;
 use std::net::{SocketAddr, TcpListener};
 
-use anyhow::Error;
 use anyhow::Result;
-use futures::AsyncReadExt;
-use http_types::{Request, Response, StatusCode};
-use http_types::Error as HttpError;
+use http_types::{Response, StatusCode};
 use regex::Regex;
 use smol::{Async, future::Future};
 use smol::lock::RwLock;
@@ -64,7 +61,7 @@ impl App {
 	}
 
 	pub fn start(&mut self) -> Result<()> {
-		let result: Result<(), std::io::Error> = smol::block_on(async {
+		let _: Result<(), std::io::Error> = smol::block_on(async {
 			let listener = Async::<TcpListener>::bind(self.addr).unwrap();
 			println!("Listening on {}", listener.get_ref().local_addr()?);
 			loop {
@@ -78,7 +75,7 @@ impl App {
 					if let Err(err) = async_h1::accept(stream, async move |req| {
 						println!("Serving {}", req.url());
 
-						let mut ctx = Context {
+						let ctx = Context {
 							pathIndex: 0,
 							request: req,
 							response: Response::new(StatusCode::Ok),
@@ -86,7 +83,7 @@ impl App {
 
 						let handlers = HANDLERS.read().await;
 						if handlers.len() == 0 {
-							let mut resp = Response::new(StatusCode::ServiceUnavailable);
+							let resp = Response::new(StatusCode::ServiceUnavailable);
 							return Ok(resp);
 						} else {
 							return match ctx.next().await {
@@ -106,7 +103,6 @@ impl App {
 				})
 						.detach();
 			}
-			Ok(())
 		});
 		return Ok(());
 	}
