@@ -5,13 +5,19 @@ use http_types::{Request, Response};
 
 use crate::application::{PATH_REG};
 use crate::application::{HANDLERS};
+use std::collections::HashMap;
+use std::fmt::Display;
+use async_dup::Arc;
+use smol::lock::RwLock;
 
 pub struct Context {
 	pub pathIndex: usize,
 
 	pub request: Request,
 	pub response: Response,
+	pub sessionData: HashMap<&'static str, Box<dyn Display + Send>>
 }
+
 
 impl Context {
 	pub async fn next(mut self) -> Result<Self, http_types::Error> {

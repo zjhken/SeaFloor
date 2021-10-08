@@ -79,6 +79,7 @@ impl App {
 							pathIndex: 0,
 							request: req,
 							response: Response::new(StatusCode::Ok),
+							sessionData: Default::default()
 						};
 
 						let handlers = HANDLERS.read().await;
