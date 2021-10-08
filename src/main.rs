@@ -4,11 +4,11 @@ use regex::Error;
 
 use seafloor::{application::App, context::Context};
 
-fn main() {
-    let mut app = App::new();
-    let _ = app.setFunc("/test", hehe);
-    let _ = app.setFunc("/test.*", doIt);
-    let _ = app.start();
+fn main() -> Result<()> {
+    App::new()
+        .setFunc("/test", hehe)
+        .setFunc("/test.*", doIt)
+        .start()
 }
 
 async fn hehe(mut ctx: Context) -> Result<Context, http_types::Error> {
