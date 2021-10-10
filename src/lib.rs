@@ -12,9 +12,7 @@ pub mod utils;
 
 #[cfg(test)]
 mod tests {
-	use anyhow::bail;
 	use anyhow::Result;
-	use regex::Error;
 
 	use crate::{application::App, context::Context};
 

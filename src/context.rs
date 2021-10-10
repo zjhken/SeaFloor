@@ -7,8 +7,6 @@ use crate::application::{PATH_REG};
 use crate::application::{HANDLERS};
 use std::collections::HashMap;
 use std::fmt::Display;
-use async_dup::Arc;
-use smol::lock::RwLock;
 
 pub struct Context {
 	pub pathIndex: usize,

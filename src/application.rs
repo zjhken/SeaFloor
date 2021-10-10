@@ -50,9 +50,9 @@ impl App {
 	}
 
 	pub fn new() -> Self {
-		return App {
+		App {
 			addr: ([0, 0, 0, 0], 8800),
-		};
+		}
 	}
 
 	pub fn listenAddress<A: Into<SocketAddr>>(&mut self, addr: ([u8; 4], u16)) -> &mut App {
@@ -106,5 +106,11 @@ impl App {
 			}
 		});
 		return Ok(());
+	}
+}
+
+impl Default for App {
+	fn default() -> Self {
+		Self::new()
 	}
 }
