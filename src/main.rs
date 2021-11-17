@@ -6,6 +6,7 @@ fn main() -> Result<()> {
     App::new()
         .setFunc("/test", hehe)
         .setFunc("/test.*", do_it)
+        .listenAddress(([0,0,0,0], 8800))
         .start()
 }
 

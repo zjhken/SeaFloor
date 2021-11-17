@@ -55,7 +55,7 @@ impl App {
 		}
 	}
 
-	pub fn listenAddress<A: Into<SocketAddr>>(&mut self, addr: ([u8; 4], u16)) -> &mut App {
+	pub fn listenAddress(&mut self, addr: ([u8; 4], u16)) -> &mut App {
 		self.addr = addr;
 		return self;
 	}
