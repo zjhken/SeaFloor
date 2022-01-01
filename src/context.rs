@@ -3,8 +3,8 @@
 use anyhow::Result;
 use http_types::{Request, Response};
 
-use crate::application::{PATH_REG};
-use crate::application::{HANDLERS};
+use crate::application::HANDLERS;
+use crate::application::PATH_REG;
 use std::collections::HashMap;
 use std::fmt::Display;
 
@@ -13,9 +13,8 @@ pub struct Context {
 
 	pub request: Request,
 	pub response: Response,
-	pub sessionData: HashMap<&'static str, Box<dyn Display + Send>>
+	pub sessionData: HashMap<&'static str, Box<dyn Display + Send>>,
 }
-
 
 impl Context {
 	pub async fn next(mut self) -> Result<Self, http_types::Error> {

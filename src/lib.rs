@@ -1,6 +1,7 @@
 #![allow(non_snake_case)]
 #![feature(async_closure)]
 #![feature(once_cell)]
+#![feature(associated_type_defaults)]
 
 pub use anyhow;
 pub use smol;
