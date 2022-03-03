@@ -10,10 +10,9 @@ use std::fmt::Display;
 
 pub struct Context {
 	pub pathIndex: usize,
-
 	pub request: Request,
 	pub response: Response,
-	pub sessionData: HashMap<&'static str, Box<dyn Display + Send>>,
+	pub sessionData: HashMap<&'static str, Box<dyn Display + Send + Sync>>,
 }
 
 impl Context {

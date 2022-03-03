@@ -4,8 +4,8 @@
 #![feature(associated_type_defaults)]
 
 pub use anyhow;
-pub use smol;
 pub use http_types;
+pub use smol;
 
 pub mod application;
 pub mod context;
