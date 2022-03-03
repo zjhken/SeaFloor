@@ -4,6 +4,13 @@ use anyhow::Result;
 
 use seafloor::{application::App, context::Context};
 
+// todo: static file embedded
+// todo: file upload in stream
+// todo: json
+// todo: sqlite
+// todo: msgpack
+// todo: postgres
+
 fn main() -> Result<()> {
 	App::new()
 		.setFunc("/test", hehe)
