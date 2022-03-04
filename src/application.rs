@@ -1,22 +1,22 @@
 #![allow(non_snake_case)]
 
-use std::collections::HashMap;
 use std::lazy::SyncLazy;
 use std::net::{SocketAddr, TcpListener};
 
 use anyhow::Result;
 use http_types::{Response, StatusCode};
 use regex::Regex;
-use smol::{Async, future::Future};
 use smol::lock::RwLock;
+use smol::{future::Future, Async};
 
 use crate::{context::Context, utils::AsyncFnPtr};
 
 pub static HANDLERS: SyncLazy<RwLock<Vec<AsyncFnPtr<HttpResult>>>> =
 	SyncLazy::new(|| RwLock::new(vec![]));
-pub static PATHS: SyncLazy<RwLock<Vec<&str>>> = SyncLazy::new(|| RwLock::new(vec![]));
-pub static PATH_TREE: SyncLazy<RwLock<HashMap<&'static str, PathNode>>> =
-	SyncLazy::new(|| RwLock::new(HashMap::new()));
+
+// todo: better path search
+// pub static PATH_TREE: SyncLazy<RwLock<HashMap<&'static str, PathNode>>> =
+// 	SyncLazy::new(|| RwLock::new(HashMap::new()));
 
 pub static PATH_REG: SyncLazy<RwLock<Vec<Regex>>> = SyncLazy::new(|| RwLock::new(vec![]));
 
@@ -34,13 +34,12 @@ pub type HttpResult = Result<Context, http_types::Error>;
 
 impl App {
 	pub fn setFunc<Fut>(&mut self, path: &'static str, f: fn(Context) -> Fut) -> &mut App
-		where
-				Fut: Future<Output=HttpResult> + Send + 'static,
+	where
+		Fut: Future<Output = HttpResult> + Send + 'static,
 	{
 		smol::block_on(async {
 			let mut handlers = HANDLERS.write().await;
 			(*handlers).push(AsyncFnPtr::new(f));
-
 
 			let mut pathRegex = PATH_REG.write().await;
 			let regex = Regex::new(path).unwrap();
@@ -79,7 +78,7 @@ impl App {
 							pathIndex: 0,
 							request: req,
 							response: Response::new(StatusCode::Ok),
-							sessionData: Default::default()
+							sessionData: Default::default(),
 						};
 
 						let handlers = HANDLERS.read().await;
@@ -97,12 +96,12 @@ impl App {
 							};
 						}
 					})
-							.await
+					.await
 					{
 						println!("Connection error: {:#?}", err);
 					}
 				})
-						.detach();
+				.detach();
 			}
 		});
 		return Ok(());
