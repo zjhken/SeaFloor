@@ -5,6 +5,7 @@ use anyhow::Result;
 use seafloor::{application::App, context::Context};
 
 // todo: static file embedded
+// todo: scheduler
 // todo: file upload in stream
 // todo: json
 // todo: sqlite
