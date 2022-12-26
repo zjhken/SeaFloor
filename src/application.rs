@@ -1,27 +1,26 @@
 #![allow(non_snake_case)]
 
-use std::lazy::SyncLazy;
-use std::net::{SocketAddr, TcpListener};
+use futures::future::{BoxFuture};
+use std::net::{TcpListener};
+use std::vec;
 
 use anyhow::Result;
 use http_types::{Response, StatusCode};
 use regex::Regex;
-use smol::lock::RwLock;
 use smol::{future::Future, Async};
 
-use crate::{context::Context, utils::AsyncFnPtr};
-
-pub static HANDLERS: SyncLazy<RwLock<Vec<AsyncFnPtr<HttpResult>>>> =
-	SyncLazy::new(|| RwLock::new(vec![]));
-
-// todo: better path search
-// pub static PATH_TREE: SyncLazy<RwLock<HashMap<&'static str, PathNode>>> =
-// 	SyncLazy::new(|| RwLock::new(HashMap::new()));
-
-pub static PATH_REG: SyncLazy<RwLock<Vec<Regex>>> = SyncLazy::new(|| RwLock::new(vec![]));
+use crate::logger::setup_logger;
+use crate::{context::Context};
 
 pub struct App {
 	addr: ([u8; 4], u16),
+	routes: Vec<Route>,
+}
+
+#[derive(Clone)]
+pub struct Route {
+	pub regex: Regex,
+	pub func: fn(&mut Context) -> BoxFuture<'_, HttpResult>,
 }
 
 pub enum PathNode {
@@ -30,20 +29,26 @@ pub enum PathNode {
 	Vec(Vec<PathNode>),
 }
 
-pub type HttpResult = Result<Context, http_types::Error>;
+pub type HttpResult = Result<(), http_types::Error>;
+
+pub trait AsyncFn<'a, Out>: Fn(&'a mut Context) -> Self::Fut {
+    type Fut: Future<Output = Out> + 'a + Send;
+}
+
+impl<'a, F, Out, Fut> AsyncFn<'a, Out> for F
+where
+    F: Fn(&'a mut Context) -> Fut,
+    Fut: Future<Output = Out> + 'a + Send,
+{
+    type Fut = Fut;
+}
 
 impl App {
-	pub fn setFunc<Fut>(&mut self, path: &'static str, f: fn(Context) -> Fut) -> &mut App
-	where
-		Fut: Future<Output = HttpResult> + Send + 'static,
+	pub fn setFunc(&mut self, path: &'static str, f: fn(&mut Context) -> BoxFuture<'_, HttpResult>) -> &mut App
 	{
-		smol::block_on(async {
-			let mut handlers = HANDLERS.write().await;
-			(*handlers).push(AsyncFnPtr::new(f));
-
-			let mut pathRegex = PATH_REG.write().await;
-			let regex = Regex::new(path).unwrap();
-			pathRegex.push(regex);
+		self.routes.push(Route {
+			regex: Regex::new(path).unwrap(),
+			func: f,
 		});
 		return self;
 	}
@@ -51,6 +56,7 @@ impl App {
 	pub fn new() -> Self {
 		App {
 			addr: ([0, 0, 0, 0], 8800),
+			routes: vec![],
 		}
 	}
 
@@ -59,11 +65,14 @@ impl App {
 		return self;
 	}
 
-	pub fn start(&mut self) -> Result<()> {
+	pub fn start(self) -> Result<()> {
+		setup_logger();
+
 		let _: Result<(), std::io::Error> = smol::block_on(async {
 			let listener = Async::<TcpListener>::bind(self.addr).unwrap();
 			println!("Listening on {}", listener.get_ref().local_addr()?);
 			loop {
+				let routes = self.routes.clone();
 				let (stream, peer_addr) = listener.accept().await?;
 				println!("Accepted client: {}", peer_addr);
 
@@ -71,30 +80,37 @@ impl App {
 
 				// Spawn a task that echoes messages from the client back to it.
 				smol::spawn(async move {
+					let routes = &routes.clone();
 					if let Err(err) = async_h1::accept(stream, async move |req| {
 						println!("Serving {}", req.url());
 
-						let ctx = Context {
+						let mut ctx = Context {
 							pathIndex: 0,
 							request: req,
-							response: Response::new(StatusCode::Ok),
+							response: Response::new(StatusCode::NotFound),
 							sessionData: Default::default(),
 						};
 
-						let handlers = HANDLERS.read().await;
-						if handlers.len() == 0 {
-							let resp = Response::new(StatusCode::ServiceUnavailable);
-							return Ok(resp);
-						} else {
-							return match ctx.next().await {
-								Ok(ctx) => Ok(ctx.response),
-								Err(e) => {
-									let mut resp = Response::new(e.status());
-									resp.set_body(format!("{}", e));
-									Ok(resp)
+						for route in routes.iter() {
+							let url = ctx.request.url().as_str();
+							if route.regex.is_match(url) {
+								match (route.func)(&mut ctx).await {
+									Ok(_) => {
+										return Ok(ctx.response);
+									}
+									Err(err) => {
+										let mut resp = Response::new(err.status());
+										let msg = format!("{}", err);
+										log::error!("{}", msg);
+										resp.set_body(msg);
+										return Ok(resp);
+									}
 								}
-							};
+							}
 						}
+
+						return Ok(ctx.response);
+
 					})
 					.await
 					{
@@ -108,8 +124,8 @@ impl App {
 	}
 }
 
-impl Default for App {
-	fn default() -> Self {
-		Self::new()
-	}
-}
+// impl <F: for<'a> AsyncFn<'a, HttpResult>> Default for App<F> {
+// 	fn default() -> Self {
+// 		Self::new()
+// 	}
+// }

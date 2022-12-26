@@ -1,9 +1,14 @@
+#![feature(once_cell)]
 #![allow(non_snake_case)]
 use std::{fmt::Display, vec};
 
 use anyhow::Result;
 
-use seafloor::{application::App, context::Context};
+use futures::FutureExt;
+use seafloor::{
+	application::{App, HttpResult},
+	context::Context,
+};
 
 // todo: static file embedded
 // todo: scheduler
@@ -14,14 +19,15 @@ use seafloor::{application::App, context::Context};
 // todo: postgres
 
 fn main() -> Result<()> {
-	App::new()
-		.setFunc("/test", hehe)
-		.setFunc("/test.*", do_it)
-		.listenAddress(([0, 0, 0, 0], 8800))
-		.start()
+	let mut app = App::new();
+	app.setFunc("/test", |ctx| async move { hehe(ctx).await }.boxed())
+		.setFunc("/test.*", |ctx| async move { do_it(ctx).await }.boxed())
+		.listenAddress(([0, 0, 0, 0], 8800));
+	let _ = app.start();
+	Ok(())
 }
 
-async fn hehe(mut ctx: Context) -> Result<Context, http_types::Error> {
+async fn hehe(ctx: &mut Context) -> HttpResult {
 	println!("Enter hehe");
 	ctx.response.set_body("This is hehe function");
 	ctx.sessionData.insert(
@@ -35,15 +41,15 @@ async fn hehe(mut ctx: Context) -> Result<Context, http_types::Error> {
 		"list",
 		Box::new(TheVec(vec!["haha".to_owned(), "hehe".to_owned()])),
 	);
-	let ctx = ctx.next().await;
 	println!("hehe done");
-	return ctx;
+	Ok(())
 }
 
-async fn do_it(mut ctx: Context) -> Result<Context, http_types::Error> {
+async fn do_it(ctx: &mut Context) -> HttpResult {
 	println!("Enter doIt");
 	ctx.response.insert_header("Content-Type", "text/plain");
 	let s = ctx.sessionData.get("user").unwrap();
+
 	println!(">>>>>>>>>>{s}");
 	// s.push_str("This is doIt function");
 	ctx.response.set_body(s.to_string());
@@ -56,9 +62,8 @@ async fn do_it(mut ctx: Context) -> Result<Context, http_types::Error> {
 	);
 	let listStr = ctx.sessionData.get("list").unwrap().to_string();
 	println!("{listStr}");
-	let ctx = ctx.next().await;
 	println!("DoIt done.");
-	return ctx;
+	return Ok(());
 }
 
 struct TheVec(Vec<String>);
