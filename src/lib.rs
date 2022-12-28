@@ -2,30 +2,29 @@
 #![feature(async_closure)]
 #![feature(once_cell)]
 #![feature(associated_type_defaults)]
+#![feature(box_into_inner)]
 
 pub use anyhow;
 pub use http_types;
 pub use smol;
 
 pub mod application;
-pub mod context;
-pub mod utils;
 pub mod logger;
+pub mod utils;
 
 #[cfg(test)]
 mod tests {
-	use std::mem::ManuallyDrop;
 
-use anyhow::Result;
-use futures::FutureExt;
+	use anyhow::Result;
+	use futures::FutureExt;
 
-	use crate::{application::App, context::Context};
+	use crate::{application::{App, Context}};
 
 	#[test]
 	fn it_works() {
 		let mut app = App::new();
-		let _ = app.setFunc("/test", |ctx| async move {hehe(ctx).await}.boxed());
-		let _ = app.setFunc("/test.*", |ctx|async move {doIt(ctx).await}.boxed());
+		let _ = app.setFunc("/test", |ctx| async move { hehe(ctx).await }.boxed());
+		let _ = app.setFunc("/test.*", |ctx| async move { doIt(ctx).await }.boxed());
 		let _ = app.start();
 	}
 
@@ -42,9 +41,9 @@ use futures::FutureExt;
 	async fn doIt(ctx: &mut Context) -> Result<(), http_types::Error> {
 		println!("Enter doIt");
 		ctx.response.insert_header("Content-Type", "text/plain");
-		let s = ctx.sessionData.get("haha").unwrap().to_string();
+		let s = ctx.sessionData.get::<String>("haha").unwrap();
 		// s.push_str("This is doIt function");
-		ctx.response.set_body(s);
+		ctx.response.set_body(s.as_str());
 		// let ctx = ctx.next().await;
 		println!("DoIt done.");
 		return Ok(());

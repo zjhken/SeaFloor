@@ -10,7 +10,20 @@ use regex::Regex;
 use smol::{future::Future, Async};
 
 use crate::logger::setup_logger;
-use crate::{context::Context};
+use crate::utils::AnyMap;
+
+use http_types::{Request};
+
+// use std::collections::HashMap;
+// use std::fmt::Display;
+
+pub struct Context {
+	pub pathIndex: usize,
+	pub request: Request,
+	pub response: Response,
+	// pub sessionData: HashMap<&'static str, Box<dyn Display + Send + Sync>>,
+	pub sessionData: AnyMap<&'static str>
+}
 
 pub struct App {
 	addr: ([u8; 4], u16),
@@ -88,16 +101,16 @@ impl App {
 							pathIndex: 0,
 							request: req,
 							response: Response::new(StatusCode::NotFound),
-							sessionData: Default::default(),
+							// sessionData: Default::default()
+							sessionData: AnyMap::new(),
 						};
 
 						for route in routes.iter() {
 							let url = ctx.request.url().as_str();
+							log::info!("request url is {}", url);
 							if route.regex.is_match(url) {
 								match (route.func)(&mut ctx).await {
-									Ok(_) => {
-										return Ok(ctx.response);
-									}
+									Ok(_) => {},
 									Err(err) => {
 										let mut resp = Response::new(err.status());
 										let msg = format!("{}", err);
@@ -129,3 +142,16 @@ impl App {
 // 		Self::new()
 // 	}
 // }
+
+#[cfg(test)]
+mod test {
+    use std::{collections::HashMap, fmt::Display};
+
+
+	#[test]
+	fn test_boxed_map(){
+		let mut map:HashMap<&'static str, Box<dyn Display + Send + Sync>> = Default::default();
+		map.insert("haha", Box::new("hahaha".to_owned()));
+		let s = map.get("haha").unwrap();
+	}
+}
