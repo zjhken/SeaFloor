@@ -18,7 +18,7 @@ mod tests {
 	use anyhow::Result;
 	use futures::FutureExt;
 
-	use crate::{application::{App, Context}};
+	use crate::application::{App, Context};
 
 	#[test]
 	fn it_works() {

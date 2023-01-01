@@ -1,7 +1,7 @@
 #![allow(non_snake_case)]
 
-use futures::future::{BoxFuture};
-use std::net::{TcpListener};
+use futures::future::BoxFuture;
+use std::net::TcpListener;
 use std::vec;
 
 use anyhow::Result;
@@ -12,7 +12,7 @@ use smol::{future::Future, Async};
 use crate::logger::setup_logger;
 use crate::utils::AnyMap;
 
-use http_types::{Request};
+use http_types::Request;
 
 // use std::collections::HashMap;
 // use std::fmt::Display;
@@ -22,7 +22,7 @@ pub struct Context {
 	pub request: Request,
 	pub response: Response,
 	// pub sessionData: HashMap<&'static str, Box<dyn Display + Send + Sync>>,
-	pub sessionData: AnyMap<&'static str>
+	pub sessionData: AnyMap<&'static str>,
 }
 
 pub struct App {
@@ -45,20 +45,23 @@ pub enum PathNode {
 pub type HttpResult = Result<(), http_types::Error>;
 
 pub trait AsyncFn<'a, Out>: Fn(&'a mut Context) -> Self::Fut {
-    type Fut: Future<Output = Out> + 'a + Send;
+	type Fut: Future<Output = Out> + 'a + Send;
 }
 
 impl<'a, F, Out, Fut> AsyncFn<'a, Out> for F
 where
-    F: Fn(&'a mut Context) -> Fut,
-    Fut: Future<Output = Out> + 'a + Send,
+	F: Fn(&'a mut Context) -> Fut,
+	Fut: Future<Output = Out> + 'a + Send,
 {
-    type Fut = Fut;
+	type Fut = Fut;
 }
 
 impl App {
-	pub fn setFunc(&mut self, path: &'static str, f: fn(&mut Context) -> BoxFuture<'_, HttpResult>) -> &mut App
-	{
+	pub fn setFunc(
+		&mut self,
+		path: &'static str,
+		f: fn(&mut Context) -> BoxFuture<'_, HttpResult>,
+	) -> &mut App {
 		self.routes.push(Route {
 			regex: Regex::new(path).unwrap(),
 			func: f,
@@ -110,7 +113,7 @@ impl App {
 							log::info!("request url is {}", url);
 							if route.regex.is_match(url) {
 								match (route.func)(&mut ctx).await {
-									Ok(_) => {},
+									Ok(_) => {}
 									Err(err) => {
 										let mut resp = Response::new(err.status());
 										let msg = format!("{}", err);
@@ -123,7 +126,6 @@ impl App {
 						}
 
 						return Ok(ctx.response);
-
 					})
 					.await
 					{
@@ -145,12 +147,11 @@ impl App {
 
 #[cfg(test)]
 mod test {
-    use std::{collections::HashMap, fmt::Display};
-
+	use std::{collections::HashMap, fmt::Display};
 
 	#[test]
-	fn test_boxed_map(){
-		let mut map:HashMap<&'static str, Box<dyn Display + Send + Sync>> = Default::default();
+	fn test_boxed_map() {
+		let mut map: HashMap<&'static str, Box<dyn Display + Send + Sync>> = Default::default();
 		map.insert("haha", Box::new("hahaha".to_owned()));
 		let s = map.get("haha").unwrap();
 	}

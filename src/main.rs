@@ -1,13 +1,11 @@
 #![feature(once_cell)]
 #![allow(non_snake_case)]
-use std::{ vec};
+use std::vec;
 
 use anyhow::Result;
 
 use futures::FutureExt;
-use seafloor::{
-	application::{App, HttpResult, Context},
-};
+use seafloor::application::{App, Context, HttpResult};
 
 // todo: precisely check path, not url
 // todo: get value in path
