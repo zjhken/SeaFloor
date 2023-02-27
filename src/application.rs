@@ -18,7 +18,6 @@ use http_types::Request;
 // use std::fmt::Display;
 
 pub struct Context {
-	pub pathIndex: usize,
 	pub request: Request,
 	pub response: Response,
 	// pub sessionData: HashMap<&'static str, Box<dyn Display + Send + Sync>>,
@@ -101,7 +100,6 @@ impl App {
 						println!("Serving {}", req.url());
 
 						let mut ctx = Context {
-							pathIndex: 0,
 							request: req,
 							response: Response::new(StatusCode::NotFound),
 							// sessionData: Default::default()
