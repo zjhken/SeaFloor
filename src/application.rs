@@ -79,7 +79,7 @@ impl App {
 		self.addr = addr;
 		return self;
 	}
-
+	/// this method is blocking
 	pub fn start(self) -> Result<()> {
 		setup_logger();
 
@@ -98,7 +98,6 @@ impl App {
 					let routes = &routes.clone();
 					if let Err(err) = async_h1::accept(stream, async move |req| {
 						println!("Serving {}", req.url());
-
 						let mut ctx = Context {
 							request: req,
 							response: Response::new(StatusCode::NotFound),
